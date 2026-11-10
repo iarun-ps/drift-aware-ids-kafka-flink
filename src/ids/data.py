@@ -34,6 +34,7 @@ def load_day(name: str) -> pd.DataFrame:
     files = dict(DAY_FILES)
     path = DATA_DIR / files[name]
     df = pd.read_csv(path, encoding="latin-1", low_memory=False)
+    df = df.dropna(how="all").reset_index(drop=True)
     df.columns = df.columns.str.strip()
     df = df.rename(columns=RENAME)
 
