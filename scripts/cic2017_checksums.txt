@@ -1,0 +1,2 @@
+7bdbef286f8893f31c6db12105fa097fa5c2dcc6733179037a08129d150ea27a *data/cic2017/GeneratedLabelledFlows.zip
+c3f26274b36c837ccf28ffd2dbf4582941c30b3ee70a635c6e5b2f87c4727928 *data/cic2017/MachineLearningCSV.zip
