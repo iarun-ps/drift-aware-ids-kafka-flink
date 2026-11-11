@@ -223,3 +223,6 @@ __marimo__/
 data/
 *.onnx
 .venv/
+
+# allow small exported models
+!models/*.onnx
