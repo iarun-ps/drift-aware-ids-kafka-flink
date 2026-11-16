@@ -1,0 +1,9 @@
+signal,delta,mon,tue,wed,thu_am,thu_pm,fri_am,fri_ps,fri_dd,TOTAL
+alert_rate,0.002,0,0,1,0,0,0,0,1,2
+alert_rate,0.01,0,0,1,0,0,0,0,1,2
+alert_rate,0.05,0,0,2,0,1,0,1,0,4
+alert_rate,0.2,0,0,2,0,1,0,1,0,4
+median_ratio,0.002,0,0,1,0,1,0,0,1,3
+median_ratio,0.01,0,0,1,0,1,1,0,1,4
+median_ratio,0.05,0,0,1,0,2,0,1,1,5
+median_ratio,0.2,0,0,2,0,2,0,1,1,6
