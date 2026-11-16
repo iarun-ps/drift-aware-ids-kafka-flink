@@ -12,6 +12,8 @@ spec = load_spec(REPO_ROOT / "models" / "preprocess_spec.json")
 train, val, hold = time_split(load_day("mon"))
 Xtr, Xva, Xho = (transform(d, spec).values for d in (train, val, hold))
 
+# Set the seed before model initialization for reproducible weights.
+torch.manual_seed(0)
 model = AutoEncoder(Xtr.shape[1])
 history = fit(model, Xtr, epochs=10, seed=0)
 for i, h in enumerate(history, 1):
