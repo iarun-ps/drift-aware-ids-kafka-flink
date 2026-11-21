@@ -1,0 +1,9 @@
+segment,minutes_used,delta=0.002,delta=0.0001,delta=1e-06
+mon_holdout,75,0,0,0
+tue,487,0,0,0
+wed,507,1,1,0
+thu_am,239,0,0,0
+thu_pm,244,0,0,0
+fri_am,240,0,0,0
+fri_pm_portscan,150,0,0,0
+fri_pm_ddos,93,1,1,0
