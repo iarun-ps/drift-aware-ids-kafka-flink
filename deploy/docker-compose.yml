@@ -23,3 +23,36 @@ services:
       interval: 10s
       timeout: 10s
       retries: 10
+
+  jobmanager:
+    image: ids-flink:1.20.5
+    container_name: ids-jobmanager
+    command: jobmanager
+    ports:
+      - "8081:8081"
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: jobmanager
+        parallelism.default: 1
+    volumes:
+      - ../pipeline:/opt/ids/pipeline:ro
+      - ../models:/opt/ids/models:ro
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  taskmanager:
+    image: ids-flink:1.20.5
+    container_name: ids-taskmanager
+    command: taskmanager
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: jobmanager
+        taskmanager.numberOfTaskSlots: 4
+    volumes:
+      - ../pipeline:/opt/ids/pipeline:ro
+      - ../models:/opt/ids/models:ro
+    depends_on:
+      - jobmanager
