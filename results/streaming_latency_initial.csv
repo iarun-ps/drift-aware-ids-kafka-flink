@@ -1,0 +1,10 @@
+metric,value,unit
+records_sent,100,records
+successful_records,100,records
+valid_latency_records,100,records
+negative_latencies,0,records
+average_latency,827.77,ms
+p50_latency,825.50,ms
+p95_latency,910.05,ms
+p99_latency,915.09,ms
+maximum_latency,1023,ms
