@@ -1,0 +1,4 @@
+variant,segment,minute,training_candidates,training_attacks,contamination_rate
+no_alert_gate,wed,2017-07-05 11:01:00,276,0,0.0
+no_alert_gate,thu_pm,2017-07-06 15:36:00,291,0,0.0
+no_alert_gate,fri_pm_ddos,2017-07-07 16:16:00,309,0,0.0
