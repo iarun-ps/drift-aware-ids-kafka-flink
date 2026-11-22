@@ -4,7 +4,8 @@
 - Spec file: `models/preprocess_spec.json` (67 features, in this exact order: `spec["columns"]`).
 - Raw input to the spec: the CIC-IDS2017 flow columns, with names stripped of spaces and
   typos fixed (see `src/ids/data.py`). Identifier columns and `Destination Port` are NOT used.
-- Per-flow steps (must match `src/ids/preprocess.py::transform`):
+- The Kafka producer applies `src/ids/preprocess.py::transform` exactly once.
+- Per-flow preprocessing steps:
   1. Missing or infinite value -> the feature's median (`spec["medians"]`).
   2. Negative value -> 0, except `Init_Win_bytes_forward` and `Init_Win_bytes_backward`
      (-1 is a valid marker there and is kept).
@@ -15,14 +16,18 @@
 ## 2. Model file (final)
 - `models/static_ae.onnx`: input `x` float32 `[N, 67]`, output `score` float32 `[N]`.
   The score is the reconstruction error (higher = more anomalous).
-- Alert threshold: `models/static_ae_meta.json` -> `threshold` (99th percentile of benign
-  validation scores). A flow is an alert if `score > threshold`.
+- Model version: `static-v1` (include in every prediction/alert output).
+- Alert threshold: `0.1953052431344986` from `models/static_ae_meta.json`
+  (99th percentile of benign validation scores). Alert if `score > threshold`.
 - Parity requirement: Flink scores must match `ids.models.score` to about 1e-5.
 
 ## 3. Kafka messages (PROPOSED - Part 2 to confirm or change)
 - Topic `flows` (JSON, one flow per message):
-  `{"flow_id": str, "produce_ts_ms": int, "label": str, "features": {name: float or null}}`
-  Raw feature values; infinite or missing values are sent as null. Flink applies section 1.
+  `{"flow_id": str, "produce_ts_ms": int, "label": str, "features": {name: float}}`
+  The producer sends 67 already-preprocessed feature values from `transform()`.
+  Values must be finite and correspond to `spec['columns']`.
+  Flink assembles them in that exact order as float32 `[1, 67]` and performs
+  ONNX scoring only. Flink must NOT repeat preprocessing.
   `label` is carried only for evaluation; the model never uses it.
 - Topic `alerts` (JSON): `{"flow_id": str, "score": float, "is_alert": bool,
   "produce_ts_ms": int, "alert_ts_ms": int, "model_version": str}`
