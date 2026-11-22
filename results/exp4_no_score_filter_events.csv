@@ -1,0 +1,7 @@
+segment,minute,event,model_version
+wed,2017-07-05 10:55:00,drift_detected,0
+wed,2017-07-05 11:00:00,candidate_approved,1
+thu_pm,2017-07-06 15:28:00,drift_detected,1
+thu_pm,2017-07-06 15:30:00,candidate_approved,2
+fri_pm_ddos,2017-07-07 16:11:00,drift_detected,2
+fri_pm_ddos,2017-07-07 16:17:00,candidate_approved,3

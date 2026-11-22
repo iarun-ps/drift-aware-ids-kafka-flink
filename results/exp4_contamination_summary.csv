@@ -1,0 +1,4 @@
+variant,model_updates,training_candidates,training_attacks,contamination_percent
+full,3,847,0,0.0
+no_alert_gate,3,876,0,0.0
+no_score_filter,3,5904,3389,57.40176151761518
