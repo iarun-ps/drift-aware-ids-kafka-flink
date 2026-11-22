@@ -122,7 +122,8 @@ def run_one(args, out_root, run_id, partitions, parallelism, rate):
 
     log(f"starting Flink job with parallelism {parallelism}")
     output = sh(["docker", "exec", "ids-jobmanager", "/opt/flink/bin/flink", "run", "-d",
-                 "-p", str(parallelism), "-py", "/opt/ids/pipeline/flink_score.py",
+                 "-p", str(parallelism), "-pyfs", "/opt/ids/pipeline/model_holder.py",
+                 "-py", "/opt/ids/pipeline/flink_score.py",
                  "--input", in_topic, "--output", out_topic,
                  "--group", f"ids-{suffix}", "--unbounded"])
     match = re.search(r"JobID ([0-9a-f]{32})", output)

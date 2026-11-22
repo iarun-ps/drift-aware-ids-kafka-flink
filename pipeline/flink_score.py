@@ -5,10 +5,11 @@ The producer already applied transform() once; Flink must NOT repeat it.
 import argparse
 import json
 import math
+import os
+import sys
 import time
 
 import numpy as np
-import onnxruntime as ort
 from pyflink.common import Types, WatermarkStrategy
 from pyflink.common.serialization import SimpleStringSchema
 from pyflink.datastream import StreamExecutionEnvironment
@@ -21,9 +22,11 @@ from pyflink.datastream.connectors.kafka import (
 )
 from pyflink.datastream.functions import MapFunction
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from model_holder import ModelHolder  # noqa: E402
+
 BOOTSTRAP = "kafka:19092"  # Kafka as seen from other containers
 MODELS_DIR = "/opt/ids/models"
-MODEL_VERSION = "static-v1"
 
 
 class ScoreFlow(MapFunction):
@@ -32,19 +35,14 @@ class ScoreFlow(MapFunction):
     def open(self, runtime_context):
         with open(f"{MODELS_DIR}/preprocess_spec.json") as f:
             self.columns = json.load(f)["columns"]
-        with open(f"{MODELS_DIR}/static_ae_meta.json") as f:
-            self.threshold = float(json.load(f)["threshold"])
-        options = ort.SessionOptions()
-        options.intra_op_num_threads = 1
-        options.inter_op_num_threads = 1
-        self.session = ort.InferenceSession(
-            f"{MODELS_DIR}/static_ae.onnx",
-            sess_options=options,
-            providers=["CPUExecutionProvider"],
-        )
+        # starts on static-v1 unless models/active_model.json names another valid version
+        self.holder = ModelHolder(MODELS_DIR, len(self.columns))
+        self.holder.load_initial()
 
     def map(self, line):
         flow_id = None
+        self.holder.maybe_reload()  # cheap; swaps only after full validation
+        session, threshold, version = self.holder.active  # one consistent snapshot per record
         try:
             msg = json.loads(line)
             flow_id = msg.get("flow_id")
@@ -62,17 +60,17 @@ class ScoreFlow(MapFunction):
                     raise ValueError("non-finite feature value")
 
             x = np.array(list(features.values()), dtype=np.float32).reshape(1, -1)
-            score = float(self.session.run(["score"], {"x": x})[0][0])
+            score = float(session.run(["score"], {"x": x})[0][0])
             if not math.isfinite(score):
                 raise ValueError("model returned a non-finite score")
 
             return json.dumps({
                 "flow_id": flow_id,
                 "status": "ok",
-                "model_version": MODEL_VERSION,
+                "model_version": version,
                 "score": score,
-                "threshold": self.threshold,
-                "is_alert": score > self.threshold,
+                "threshold": threshold,
+                "is_alert": score > threshold,
                 "label": msg.get("label"),  # carried for evaluation only
                 "produce_ts_ms": msg.get("produce_ts_ms"),
                 "completion_ts_ms": int(time.time() * 1000),
@@ -82,7 +80,7 @@ class ScoreFlow(MapFunction):
                 "flow_id": flow_id,
                 "status": "error",
                 "reason": str(exc),
-                "model_version": MODEL_VERSION,
+                "model_version": version,
                 "completion_ts_ms": int(time.time() * 1000),
             })
 
