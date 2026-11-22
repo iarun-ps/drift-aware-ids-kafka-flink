@@ -3,6 +3,7 @@
 import argparse
 import json
 import time
+import uuid
 
 import numpy as np
 import pandas as pd
@@ -29,6 +30,7 @@ def parse_args():
 
 def main():
     args = parse_args()
+    run_id = uuid.uuid4().hex[:8]
 
     if args.rate <= 0:
         raise ValueError("Rate must be greater than zero.")
@@ -113,7 +115,7 @@ def main():
             time.sleep(wait)
 
         message = {
-            "flow_id": f"hf-{i}",
+            "flow_id": f"hf-{run_id}-{i}",
             "produce_ts_ms": int(time.time() * 1000),
             "label": str(df.iloc[i]["Label"]),
             "features": dict(
