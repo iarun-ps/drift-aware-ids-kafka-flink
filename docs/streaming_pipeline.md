@@ -50,8 +50,7 @@ Grafana http://localhost:3000 (admin/admin; import `deploy/grafana/dashboard.jso
   warning when it could not keep up, and such latency is not valid.
 - Between experiment runs both Flink containers are restarted: otherwise the Metaspace
   limit fills up and the job manager keeps stale slot state (4-worker jobs then fail).
-- Output topic is `scores` with `completion_ts_ms`; the contract proposed `alerts` with
-  `alert_ts_ms`. Agree the final names with Member C.
+- Final names agreed: output topic scores, time field completion_ts_ms (the contract was updated to match).
 
 ## Safe model reload (Member B)
 
