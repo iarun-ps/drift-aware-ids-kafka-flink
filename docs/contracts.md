@@ -29,9 +29,14 @@
   Flink assembles them in that exact order as float32 `[1, 67]` and performs
   ONNX scoring only. Flink must NOT repeat preprocessing.
   `label` is carried only for evaluation; the model never uses it.
-- Topic `alerts` (JSON): `{"flow_id": str, "score": float, "is_alert": bool,
-  "produce_ts_ms": int, "alert_ts_ms": int, "model_version": str}`
-  Latency of a flow = `alert_ts_ms - produce_ts_ms`.
+- Topic `scores` (JSON), one record per input flow. Success record:
+  `{"flow_id": str, "status": "ok", "model_version": str, "score": float,
+  "threshold": float, "is_alert": bool, "label": str, "produce_ts_ms": int,
+  "completion_ts_ms": int}`. Error record (invalid input is reported, not dropped):
+  `{"flow_id": str|null, "status": "error", "reason": str, "model_version": str,
+  "completion_ts_ms": int}`.
+  Latency of a flow = `completion_ts_ms - produce_ts_ms`.
+  (Originally proposed as topic `alerts` with `alert_ts_ms`; renamed during implementation.)
 
 ## 4. Results files (PROPOSED)
 - CSV in `results/`, one row per run or segment, with a `git_sha` column (see
