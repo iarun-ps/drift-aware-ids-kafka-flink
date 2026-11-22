@@ -43,11 +43,13 @@ def main():
     labels = df["Label"].astype(str).tolist()
 
     producer = KafkaProducer(
-        bootstrap_servers=args.bootstrap,
-        acks="all",
-        retries=5,
-        key_serializer=lambda k: k.encode("utf-8"),
-        value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+    bootstrap_servers=args.bootstrap,
+    acks="all",
+    retries=5,
+    linger_ms=20,
+    batch_size=65536,
+    key_serializer=lambda k: k.encode("utf-8"),
+    value_serializer=lambda v: json.dumps(v).encode("utf-8"),
     )
     counts = {"ok": 0, "failed": 0}
 
