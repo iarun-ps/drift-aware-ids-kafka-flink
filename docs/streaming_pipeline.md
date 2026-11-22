@@ -1,4 +1,4 @@
-# Streaming pipeline (Member B): how to run it
+# Streaming pipeline (Laniya): how to run it
 
 Pipeline: CIC-IDS2017 flows -> replay producer -> Kafka topic -> PyFlink job
 (static ONNX autoencoder, `static-v1`) -> scored output topic.
