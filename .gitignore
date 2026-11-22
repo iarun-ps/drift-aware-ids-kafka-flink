@@ -226,3 +226,6 @@ data/
 
 # allow small exported models
 !models/*.onnx
+results/exp3/*/scores.csv
+results/exp3_test/
+results/exp3_raw.zip

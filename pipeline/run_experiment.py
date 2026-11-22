@@ -109,10 +109,9 @@ def run_one(args, out_root, run_id, partitions, parallelism, rate):
     started = datetime.now(timezone.utc)
     t0 = time.time()
 
-    log("cancelling old jobs and restarting the task manager")
-    cancel_all_jobs()
-    sh(["docker", "restart", "ids-taskmanager"])
-    time.sleep(10)
+    log("restarting the job manager and the task manager (clean start)")
+    sh(["docker", "restart", "ids-jobmanager", "ids-taskmanager"])
+    time.sleep(15)
     wait_for_taskmanager(parallelism)
 
     log(f"creating topics with {partitions} partition(s)")
