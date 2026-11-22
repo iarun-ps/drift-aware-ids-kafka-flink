@@ -229,3 +229,5 @@ data/
 results/exp3/*/scores.csv
 results/exp3_test/
 results/exp3_raw.zip
+.DS_Store
+models/active_model.json

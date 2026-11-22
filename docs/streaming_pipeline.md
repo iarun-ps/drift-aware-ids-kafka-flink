@@ -52,3 +52,11 @@ Grafana http://localhost:3000 (admin/admin; import `deploy/grafana/dashboard.jso
   limit fills up and the job manager keeps stale slot state (4-worker jobs then fail).
 - Output topic is `scores` with `completion_ts_ms`; the contract proposed `alerts` with
   `alert_ts_ms`. Agree the final names with Member C.
+
+## Safe model reload (Member B)
+
+The Flink job starts on `static-v1`. To switch models while the job runs, write the version name into `models/active_model.json`, for example `{"model_version": "adaptive-v1"}`. Each worker checks the file every 2 seconds. A new model becomes active only after it passes validation (files present, valid threshold, ONNX input `x` and output `score`, 67 features, a self-test run). If validation fails, the current model keeps scoring and the failure is logged. Every output record carries `model_version` and `threshold`. Deleting the pointer file does not change a running job; it stays on its current model.
+
+Tests: `pipeline/test_model_reload.py` (offline, 12 checks) and `pipeline/live_reload_test.py` (live: 27,000 flows, static-v1 to adaptive-v1 to adaptive-v2, then a missing version rejected; 0 missing, 0 errors). Flink needs `-pyfs /opt/ids/pipeline/model_holder.py` when the job is submitted.
+
+Limits: the switch happens per worker within about 2 seconds, so with parallelism above 1 the workers may switch at slightly different moments. Adaptive models are trained offline on chronological data and must not score traffic from before their approval time in historical evaluation.
