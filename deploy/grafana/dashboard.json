@@ -1,0 +1,61 @@
+{
+  "__inputs": [
+    {"name": "DS_PROMETHEUS", "label": "Prometheus", "description": "", "type": "datasource", "pluginId": "prometheus", "pluginName": "Prometheus"}
+  ],
+  "title": "IDS Streaming Pipeline",
+  "uid": "ids-pipeline",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "time": {"from": "now-15m", "to": "now"},
+  "panels": [
+    {
+      "id": 1, "type": "timeseries", "title": "Kafka input rate (flows/s)",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "targets": [{"refId": "A", "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+        "expr": "sum(rate(kafka_topic_partition_current_offset{topic=~\"flows.*\"}[30s]))"}]
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "Flink read rate (flows/s)",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "targets": [{"refId": "A", "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+        "expr": "sum(flink_taskmanager_job_task_operator_numRecordsInPerSecond{operator_name=~\".*Source.*\"})"}]
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "Flink backlog (flows waiting)",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "targets": [{"refId": "A", "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+        "expr": "sum(flink_taskmanager_job_task_operator_pendingRecords)"}]
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "Flink CPU (Java part only)",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "fieldConfig": {"defaults": {"unit": "percentunit"}, "overrides": []},
+      "targets": [{"refId": "A", "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+        "expr": "flink_taskmanager_Status_JVM_CPU_Load"}]
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "Flink heap memory",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+      "fieldConfig": {"defaults": {"unit": "bytes"}, "overrides": []},
+      "targets": [{"refId": "A", "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+        "expr": "flink_taskmanager_Status_JVM_Memory_Heap_Used"}]
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "Flink Metaspace memory",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+      "fieldConfig": {"defaults": {"unit": "bytes"}, "overrides": []},
+      "targets": [{"refId": "A", "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+        "expr": "flink_taskmanager_Status_JVM_Memory_Metaspace_Used"}]
+    }
+  ]
+}
