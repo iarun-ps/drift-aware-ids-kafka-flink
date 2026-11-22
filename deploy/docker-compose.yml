@@ -35,6 +35,8 @@ services:
         FLINK_PROPERTIES=
         jobmanager.rpc.address: jobmanager
         parallelism.default: 1
+        metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
+        metrics.reporter.prom.port: 9249
     volumes:
       - ../pipeline:/opt/ids/pipeline:ro
       - ../models:/opt/ids/models:ro
@@ -51,8 +53,39 @@ services:
         FLINK_PROPERTIES=
         jobmanager.rpc.address: jobmanager
         taskmanager.numberOfTaskSlots: 4
+        taskmanager.memory.jvm-metaspace.size: 512m
+        metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
+        metrics.reporter.prom.port: 9249
     volumes:
       - ../pipeline:/opt/ids/pipeline:ro
       - ../models:/opt/ids/models:ro
     depends_on:
       - jobmanager
+
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:v1.9.0
+    container_name: ids-kafka-exporter
+    command: ["--kafka.server=kafka:19092"]
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: ids-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - jobmanager
+      - taskmanager
+      - kafka-exporter
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: ids-grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
