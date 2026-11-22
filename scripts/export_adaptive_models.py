@@ -1,0 +1,223 @@
+"""Chronological pilot: Static AE versus AE + ADWIN on Wednesday."""
+
+import json
+import subprocess
+
+import numpy as np
+import pandas as pd
+import torch
+
+from ids.data import REPO_ROOT, load_day
+from ids.models import AutoEncoder, score
+from ids.preprocess import load_spec, time_split, transform
+from ids.adaptive_engine import AdaptiveAE
+from ids.adaptive_onnx import export_approved_model
+from ids.metrics import evaluate_scores
+
+
+spec = load_spec(REPO_ROOT / "models/preprocess_spec.json")
+meta = json.loads(
+    (REPO_ROOT / "models/static_ae_meta.json").read_text()
+)
+
+static = AutoEncoder(meta["n_features"])
+static.load_state_dict(
+    torch.load(
+        REPO_ROOT / "models/static_ae.pt",
+        map_location="cpu",
+        weights_only=True,
+    )
+)
+static.eval()
+
+threshold = float(meta["threshold"])
+
+# All calibration data comes from Monday, before the test period.
+_, validation, monday_holdout = time_split(load_day("mon"))
+
+validation_X = transform(validation, spec).to_numpy(
+    dtype=np.float32
+)
+
+cutoff = float(
+    np.quantile(score(static, validation_X), 0.05)
+)
+
+reference_X = validation_X[:5000].copy()
+
+engine = AdaptiveAE(
+    static,
+    threshold=threshold,
+    cutoff=cutoff,
+)
+
+print("Threshold:", threshold)
+print("Adaptation cutoff:", cutoff, flush=True)
+
+results = []
+events = []
+
+
+def replay(name, df, evaluate=False):
+    """Process completed minutes in chronological order."""
+    df = (
+        df.dropna(subset=["Timestamp"])
+        .sort_values(["Timestamp", "row_order"])
+        .reset_index(drop=True)
+    )
+
+    X = transform(df, spec).to_numpy(dtype=np.float32)
+
+    predictions = np.empty(len(df), dtype=np.float32)
+    versions = np.empty(len(df), dtype=np.int32)
+
+    # Group by minute without adding an extra feature column.
+    minute_groups = df.groupby(
+        df["Timestamp"].dt.floor("min"), sort=True
+    ).indices
+
+    print(
+        f"Replaying {name}: {len(df)} flows, "
+        f"{len(minute_groups)} minutes",
+        flush=True,
+    )
+
+    for minute, indices in minute_groups.items():
+        minute_X = X[indices]
+
+        version_used = engine.model_version
+        scores, event = engine.process_minute(minute_X)
+        predictions[indices] = scores
+        versions[indices] = version_used
+
+        if event and event.get("drift_detected"):
+            events.append({
+                "segment": name,
+                "minute": minute,
+                "event": "drift_detected",
+                "model_version": engine.model_version,
+            })
+
+        if event and event.get("candidate_proposed"):
+            report = engine.validate_and_promote(reference_X)
+
+            if report["approved"]:
+                export_approved_model(
+                    engine,
+                    reference_X,
+                    REPO_ROOT / "models/adaptive",
+                )
+
+            events.append({
+                "segment": name,
+                "minute": minute,
+                "event": (
+                    "candidate_approved"
+                    if report["approved"]
+                    else "candidate_rejected"
+                ),
+                "model_version": engine.model_version,
+            })
+
+    assert np.isfinite(predictions).all()
+
+    if evaluate:
+        labels = (
+            df["Label"].astype(str).str.strip().ne("BENIGN")
+            .to_numpy()
+        )
+
+        baseline_scores = score(static, X)
+
+        periods = [
+            ("all", np.ones(len(df), dtype=bool)),
+            ("before_update", versions == 0),
+            ("after_update", versions > 0),
+        ]
+
+        for period, mask in periods:
+            if not mask.any():
+                continue
+
+            for model_name, model_scores in [
+                ("Static AE", baseline_scores),
+                ("AE + ADWIN", predictions),
+            ]:
+                metrics = evaluate_scores(
+                    labels[mask],
+                    model_scores[mask],
+                    threshold,
+                )
+
+                results.append({
+                    "segment": name,
+                    "period": period,
+                    "model": model_name,
+                    **metrics,
+                })
+
+    print(
+        f"Completed {name}; active version: "
+        f"{engine.model_version}",
+        flush=True,
+    )
+
+
+# Warm up the drift monitor using earlier traffic.
+replay("mon_holdout", monday_holdout)
+replay("tue", load_day("tue"))
+
+# Wednesday is the comparison period.
+replay("wed", load_day("wed"), evaluate=True)
+
+# Continue chronological evaluation on Thursday and Friday.
+for name in [
+    "thu_am",
+    "thu_pm",
+    "fri_am",
+    "fri_pm_portscan",
+    "fri_pm_ddos",
+]:
+    replay(name, load_day(name), evaluate=True)
+
+sha = subprocess.run(
+    ["git", "rev-parse", "--short", "HEAD"],
+    cwd=REPO_ROOT,
+    capture_output=True,
+    text=True,
+).stdout.strip()
+
+output = pd.DataFrame(results)
+output["git_sha"] = sha
+
+results_path = (
+    REPO_ROOT / "results/adaptive_export_eval.csv"
+)
+events_path = (
+    REPO_ROOT / "results/adaptive_export_events.csv"
+)
+
+output.to_csv(results_path, index=False)
+pd.DataFrame(
+    events,
+    columns=["segment", "minute", "event", "model_version"],
+).to_csv(events_path, index=False)
+
+print("\nSTATIC VS ADAPTIVE")
+print(
+    output[
+        [
+            "period", "model", "flows", "attacks", "auroc",
+            "aucpr", "precision", "recall",
+            "f1", "false_alarm_rate",
+        ]
+    ].round(4).to_string(index=False)
+)
+
+print("\nDrift events:", sum(
+    e["event"] == "drift_detected" for e in events
+))
+print("Approved updates:", engine.model_version)
+print("Saved:", results_path)
+print("Saved:", events_path)
+print("PASS: Chronological adaptive pilot completed!")

@@ -1,0 +1,11 @@
+{
+  "model_version": "adaptive-v3",
+  "input_name": "x",
+  "output_name": "score",
+  "input_dtype": "float32",
+  "n_features": 67,
+  "threshold": 0.1953052431344986,
+  "opset": 17,
+  "parity_rows": 5000,
+  "parity_max_abs_diff": 2.384185791015625e-07
+}
